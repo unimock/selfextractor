@@ -1,0 +1,58 @@
+#!/bin/bash
+if [ "$1" = "" ] ; then
+  echo ""
+  echo "usage: `basename $0` <content-directory> [selfextractor-file]"
+  echo ""
+  exit 0
+fi
+
+CDIR="$1" ; shift
+SEF="./${CDIR}.sh"
+if [ "$1" != "" ] ; then
+  SEF="$1"
+  if [ ! -d "$(dirname $SEF)" ] ; then
+    echo "error: directory <$(dirname $SEF)> does not exist!"
+    exit 1
+  fi
+fi
+TFILE=$( mktemp )
+if [ ! -d $CDIR ] ; then
+  echo "create content-directory: $CDIR ..."
+  mkdir -p $CDIR
+  echo "create content file: ${CDIR}/test.txt ..."
+  date > ${CDIR}/test.txt
+  echo "create installer file: ${CDIR}/installer ..."
+  cat <<'EOF' > ${CDIR}/installer
+#!/bin/bash
+echo "starting `basename $0` ..."
+pwd
+ls -la .
+cat test.txt
+exit 0
+EOF
+fi
+
+DECOMPRESS=${TFILE}
+cat <<'EOF' > ${DECOMPRESS}
+echo ""
+echo "Self Extracting Installer"
+echo ""
+export TDIR=$(mktemp -d)
+mkdir -p $TDIR
+chmod 700 $TDIR
+ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
+tail -n+$ARCHIVE $0 | tar -xzv -C $TDIR
+(cd $TDIR && chmod 755 ./installer && ./installer )
+rm -rf $TDIR
+echo "All done"
+exit 0
+__ARCHIVE_BELOW__
+EOF
+rm -f ${CDIR}/selfextractor.sh
+
+cp ${TFILE} ${SEF}
+tar -C ${CDIR} -czf - . >> ${SEF}
+chmod a+x ${SEF}
+rm -f ${TFILE}
+echo "${SEF}"
+exit 0

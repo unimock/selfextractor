@@ -1,0 +1,7 @@
+# selfextractor
+
+## installation
+
+```
+# TBD
+```
